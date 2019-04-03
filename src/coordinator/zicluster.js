@@ -26,7 +26,7 @@ class ZiCluster extends EventEmitter {
 	get attributes() { return Object.values(this[Sym.ATTRIBUTES]); }
 	attribute(id) { return this[Sym.ATTRIBUTES][id]; }
 	addAttribute(id, value, verified) { return this.device[Sym.COORDINATOR].addAttribute(this, id, value, verified); }
-	queryAttributes() { return this[Sym.COORDINATOR].queryAttributes(this); }
+	queryAttributes() { return this[Sym.ENDPOINT][Sym.DEVICE][Sym.COORDINATOR].queryAttributes(this); }
 
 	get commands() { return Object.values(this[Sym.COMMANDS]); }
 	command(id) { return this[Sym.COMMANDS][id]; }
