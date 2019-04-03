@@ -387,5 +387,10 @@ Enum.create('DEVICE_HA_TYPE', [
 
 Enum.create('CLUSTERS', require('./clusters/clusterDefinitions.js'));
 
+Enum.create('ON_OFF_UPDATE', [
+	[1, 'on'],
+	[0, 'off']
+]);
+
 
 module.exports = Enum;
