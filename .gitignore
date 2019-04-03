@@ -61,3 +61,5 @@ typings/
 # zigate personal network file
 network_devices.json
 
+.vscode/launch.json
+.DS_Store
