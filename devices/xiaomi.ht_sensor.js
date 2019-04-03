@@ -2,7 +2,7 @@ let ELIGIBLE_MODEL_ID = ['lumi.sensor_ht'];
 
 module.exports = {
 
-	id: 'xiaomi_motion_sensor',
+	id: 'xiaomi_humidity_temp_sensor',
 
 	match: function(device) {
 		let modelId = device.attribute(1, 0, 5) && device.attribute(1, 0, 5).value;
