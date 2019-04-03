@@ -17,7 +17,14 @@ class Device extends EventEmitter {
       this[Sym.EVENTS] = {};
       this[Sym.BATTERY] = undefined;
     }
-    send(cmdname, options) { return this[Sym.COORDINATOR].send(cmdname, options); }
+    send(cmdname, options) 
+    { 
+      Object.defineProperties(options,
+        {
+          address:{value:this.address}
+        });
+      return this[Sym.COORDINATOR].send(cmdname, options); 
+    }
 		get address() { return this[Sym.ADDRESS]; }
     get hex() { return "0x"+(("0000"+Number(this.address).toString(16)).substr(-4,4)); }
 		get ieee() { return this[Sym.IEEE]; }
@@ -71,6 +78,17 @@ class Device extends EventEmitter {
     event(id) { return this[Sym.EVENTS][id]; }
     addEvent(id, definition) { this[Sym.COORDINATOR].addEvent(this, id, definition); }
     removeEvent(id) { this[Sym.COORDINATOR].removeEvent(this, id); }
+
+    refresh()
+    //discover or rediscover device properties (endpoint/cluster/attributes) by interogating the zigate. 
+    {
+      this.queryEndpoints();
+      this.endpoints.forEach(endpoint => {endpoint.queryClusters();
+                                          //ligne suivante mal placée. La placée dans l'événement de réponse à la commande 
+                                          //envoyée au Zigate. 
+                                          endpoint.clusters.forEach(cluster => {cluster.queryAttributes()} );
+                                          });
+    }
 
 
 		[Sym.ON_ENDPOINT_ADD](endpoint) {
