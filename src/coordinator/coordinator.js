@@ -93,6 +93,7 @@ class Coordinator extends EventEmitter {
         this[Sym.STATUS] = 'started';
         this.log.info("zigbee network is up ; starting devices discovery...");
 				this.driver.send('devices_list');
+				this.devices.forEach(device => {device.refresh();})
       },
       (err)=> {
         this[Sym.STATUS] = 'stopped';
@@ -254,21 +255,24 @@ class Coordinator extends EventEmitter {
 			return rep.value;
 		});
 	}
-	refreshAttribute(attribute) {
+
+
+ 	refreshAttribute(attribute) {
 		let oldval = attribute.value;
-		return attribute.device[Sym.COORDINATOR].driver.send({
-			type: 'attribute_read',
-			address: attribute[Sym.ADDRESS],
+		return this.driver.send('attribute_read', { 
+			address: attribute.device.address,
 			endpoint:attribute.endpoint.id,
 			cluster:attribute.cluster.id,
-			attributes:[attribute.id],
-		}).then((r) => {
+			attributes:[attribute.id]
+		 })
+		.then((rep) => { 
 			attribute[Sym.SET_ATTR_DATA](rep.value);
 			this.log.debug(""+attribute.device+attribute.endpoint+attribute.cluster+attribute+": attribute refresh requested");
-			attribute.device[Sym.ON_ATTRIBUTE_CHANGE](attribute, value, oldval)
+			attribute.device[Sym.ON_ATTRIBUTE_CHANGE](attribute, rep.value, oldval)
 			this.emit('attribute_change', attribute, rep.value, oldval);
-			return rep.value;
+			return rep;
 		});
+
 	}
 
 	addCommand(cluster, id, verified) {
@@ -413,8 +417,8 @@ class Coordinator extends EventEmitter {
 
 		// 2a) find devices listed in zigate's response not yet present in coordinator
 		rep.devices.filter( zidev => !(this.device(zidev.address)))
-			// 2b) remove them from the coordinator
-			.forEach(zidev => { this.addDevice(zidev.address, dev.ieee); });
+			// 2b) add them to the coordinator
+			.forEach(zidev => { this.addDevice(zidev.address, zidev.ieee); });
 
     // 3) for each device, update battery info
     rep.devices.forEach(zidev => { this.setDeviceBattery(this.device(zidev.address), zidev.battery); });
@@ -457,17 +461,20 @@ class Coordinator extends EventEmitter {
 
 
 	queryAttributes(cluster) {
-		return this.driver.send('attribute_discovery', {address: cluster.device.address, endpoint: cluster.endpoint.id, firstId: 0, count: 5} )
-		.then((rep) => { return this.onResponseAttributeDiscovery(rep, cluster); });
+		return this.driver.send('attribute_discovery', {address: cluster.device.address, endpoint: cluster.endpoint.id, cluster: cluster.id, firstId: 0, count: 5} )
+		.then((rep) => { return this.onResponseAttributeDiscovery(rep ); }); // , cluster); });
 	}
-	onResponseAttributeDiscovery(rep, cluster) {
-		if (!cluster) {
-			throw "attribute_discovery received ; no device/cluster IDs available in response ?";
-		}
-		// attribute_discovery(0x8140), complete, type, id}
-		if (!cluster.attribute(rep.id)) {
-			cluster.addAttribute(rep.id, /*verified*/ true);
-		}
+	onResponseAttributeDiscovery(rep) {
+
+		let device = this.device(rep.address) || this.addDevice(rep.address);
+		let endpoint = device.endpoint(rep.endpoint.id) || device.addEndpoint(rep.endpoint, /*verified*/ true);
+		endpoint.verified = true;
+		let cluster = endpoint.cluster(rep.cluster.id) || endpoint.addCluster(rep.cluster, /*verified*/ true);
+		cluster.verified = true;
+
+		let attribute = cluster.attribute(rep.id) || cluster.addAttribute(rep.id, /*verified*/ true);
+			attribute.verified = true;
+
 		return rep;
 	}
 
